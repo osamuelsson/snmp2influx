@@ -1,31 +1,44 @@
 #!/usr/bin/ruby
 
 require 'snmp'
+require 'net/http'
+require 'influxdb'
 
 # Args:
 # Host
 # community
 # OID
-# Influxdb URL
+# Influxdb host
 # Influxdb database
 
 # Hardcoded
 # SNMP v2c
 # Username/pass (root/root)
-# Columns
 
-# TS name is hostname
-# Column is OID
+# TS name is string rep of varbind (OID)
+# Column is "value"
 
 if ARGV.length != 5 then
   exit 15
 end
 
-host, community, oid, url, db = ARGV
+host, community, oid, dbhost, dbname = ARGV
+data = { }
+name = ''
 
 SNMP::Manager.open(:host => host) do |manager|
     response = manager.get([oid])
     response.each_varbind do |vb|
         puts "#{vb.name.to_s}  #{vb.value.to_s}  #{vb.value.asn1_type}"
+        data[:value] = vb.value.to_i
+        name = vb.name.to_s
     end
 end
+
+data[:time] = Time.now.to_i
+
+puts name, data
+# exit 0
+
+influxdb = InfluxDB::Client.new dbname, :host => dbhost
+influxdb.write_point(name, data)
