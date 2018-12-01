@@ -3,6 +3,10 @@
 require 'snmp'
 require 'net/http'
 require 'influxdb'
+require 'getoptlong'
+
+# Option:
+# --help -- Display some help
 
 # Args:
 # Host
@@ -17,6 +21,19 @@ require 'influxdb'
 
 # TS name is string rep of varbind (OID)
 # Column is "value"
+
+opts = GetoptLong.new(
+  [ "--help", "-h", GetoptLong::NO_ARGUMENT ]
+)
+
+doHelp = false
+
+opts.each do |opt, arg|
+  case opt
+  when '--help'
+    doHelp = true
+  end
+end
 
 if ARGV.length != 5 then
   exit 15
@@ -38,7 +55,10 @@ end
 data[:time] = Time.now.to_i
 
 puts name, data
-# exit 0
 
 influxdb = InfluxDB::Client.new dbname, :host => dbhost
+# Snippet to get the latest value from the time series
+#  influxdb.query 'select time, value from "' + name + '" order desc limit 1' do | name, points |
+#    prevTime = points[:time]
+#    prevValue = points[:value]
 influxdb.write_point(name, data)
